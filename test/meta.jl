@@ -1,6 +1,5 @@
 # This file is a part of Julia. License is MIT: http://julialang.org/license
 
-@testset "meta" begin
 module MetaTest
 
 function f(x)
@@ -131,5 +130,4 @@ show_sexpr(ioB,:(1+1))
 
 show_sexpr(ioB,QuoteNode(1),1)
 
-end
 end
