@@ -1,5 +1,7 @@
 # This file is a part of Julia. License is MIT: http://julialang.org/license
 
+module TestEnums
+using Base.Test
 @test_throws MethodError convert(Enum, 1.0)
 
 @test_throws ArgumentError eval(:(@enum Foo))
@@ -163,4 +165,4 @@ let b = IOBuffer()
     seekstart(b)
     @test deserialize(b) === apple
 end
-
+end
