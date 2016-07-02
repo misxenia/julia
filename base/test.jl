@@ -440,7 +440,7 @@ record(ts::DefaultTestSet, t::AbstractTestSet) = push!(ts.results, t)
 
 function print_test_errors(ts::DefaultTestSet)
     for t in ts.results
-        if (isa(t, Error) || isa(t, Failure)) && myid() == 1
+        if (isa(t, Error) || isa(t, Fail)) && myid() == 1
             Base.show(STDERR,t)
         elseif isa(t, DefaultTestSet)
             print_test_errors(t)

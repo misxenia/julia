@@ -19,6 +19,8 @@ function move_to_node1(t)
 end
 # Base.compile only works from node 1, so compile test is handled specially
 move_to_node1("compile")
+move_to_node1("enums")
+move_to_node1("docs")
 # In a constrained memory environment, run the parallel test after all other tests
 # since it starts a lot of workers and can easily exceed the maximum memory
 max_worker_rss != typemax(Csize_t) && move_to_node1("parallel")
@@ -61,14 +63,22 @@ cd(dirname(@__FILE__)) do
     o_ts = Base.Test.DefaultTestSet("Overall")
     Base.Test.push_testset(o_ts)
     for res in results
-         Base.Test.push_testset(res[2][1])
-         Base.Test.record(o_ts, res[2][1])
-         Base.Test.pop_testset()
+        if isa(res[2][1], Exception)
+             Base.showerror(STDERR,res[2][1])
+        elseif isa(res[2][1], Base.Test.DefaultTestSet)
+             Base.Test.push_testset(res[2][1])
+             Base.Test.record(o_ts, res[2][1])
+             Base.Test.pop_testset()
+        end
     end
     println()
     Base.Test.print_test_results(o_ts,0)
     for res in results
-        println("Tests for $(res[1]) took $(res[2][2]) seconds, of which $(res[2][4]) were spent in gc ($(100*res[2][4]/res[2][2]) % ), and allocated $(res[2][3]) bytes.")
+        if !isa(res[2][1], Exception)
+            println("Tests for $(res[1]) took $(res[2][2]) seconds, of which $(res[2][4]) were spent in gc ($(100*res[2][4]/res[2][2]) % ), and allocated $(res[2][3]) bytes.")
+        else
+            o_ts.anynonpass = true
+        end
     end
 
     if !o_ts.anynonpass

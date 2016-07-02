@@ -165,4 +165,5 @@ let b = IOBuffer()
     seekstart(b)
     @test deserialize(b) === apple
 end
+
 end
