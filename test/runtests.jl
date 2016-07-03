@@ -21,6 +21,8 @@ end
 move_to_node1("compile")
 move_to_node1("enums")
 move_to_node1("docs")
+move_to_node1("loading")
+move_to_node1("subarray")
 # In a constrained memory environment, run the parallel test after all other tests
 # since it starts a lot of workers and can easily exceed the maximum memory
 max_worker_rss != typemax(Csize_t) && move_to_node1("parallel")
@@ -72,7 +74,7 @@ cd(dirname(@__FILE__)) do
         end
     end
     println()
-    Base.Test.print_test_results(o_ts,0)
+    Base.Test.print_test_results(o_ts,1)
     for res in results
         if !isa(res[2][1], Exception)
             println("Tests for $(res[1]) took $(res[2][2]) seconds, of which $(res[2][4]) were spent in gc ($(100*res[2][4]/res[2][2]) % ), and allocated $(res[2][3]) bytes.")

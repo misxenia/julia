@@ -1,6 +1,6 @@
 # This file is a part of Julia. License is MIT: http://julialang.org/license
 @testset "indexing" begin
-    @test length(()) != 0
+    @test length(()) == 0
     @test length((1,)) === 1
     @test length((1,2)) === 2
 
