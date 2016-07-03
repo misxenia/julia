@@ -21,6 +21,9 @@ end
 move_to_node1("compile")
 move_to_node1("enums")
 move_to_node1("docs")
+move_to_node1("dates")
+move_to_node1("string")
+move_to_node1("core")
 move_to_node1("loading")
 move_to_node1("subarray")
 # In a constrained memory environment, run the parallel test after all other tests
