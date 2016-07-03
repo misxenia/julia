@@ -163,7 +163,7 @@ index_lengths(A::AbstractArray, I::Colon) = (length(A),)
 @inline index_lengths(A::AbstractArray, I...) = index_lengths_dim(A, 1, I...)
 index_lengths_dim(A, dim) = ()
 index_lengths_dim(A, dim, ::Colon) = (trailingsize(A, dim),)
-@inline index_lengths_dim(A, dim, ::Colon, i, I...) = (size(A, dim), index_lengths_dim(A, dim+1, i, I...)...)
+@safeindices @inline index_lengths_dim(A, dim, ::Colon, i, I...) = (size(A, dim), index_lengths_dim(A, dim+1, i, I...)...)
 @inline index_lengths_dim(A, dim, ::Real, I...) = (1, index_lengths_dim(A, dim+1, I...)...)
 @inline index_lengths_dim{N}(A, dim, ::CartesianIndex{N}, I...) = (1, index_lengths_dim(A, dim+N, I...)...)
 @inline index_lengths_dim(A, dim, i::AbstractArray, I...) = (length(i), index_lengths_dim(A, dim+1, I...)...)
@@ -176,9 +176,9 @@ index_lengths_dim(A, dim, ::Colon) = (trailingsize(A, dim),)
 # allows us to dispatch, which is important for the type-stability of
 # the lines involving Colon as the final index.
 index_shape(A::AbstractVector, I::Colon) = indices(A)
-index_shape(A::AbstractArray,  I::Colon) = (length(A),)
+@safeindices index_shape(A::AbstractArray,  I::Colon) = (length(A),)
 @inline index_shape(A::AbstractArray, I...) = index_shape_dim(A, (true,), I...)
-@inline index_shape_dim(A, dim, ::Colon) = (trailingsize(A, length(dim)),)
+@inline index_shape_dim(A, dim, ::Colon) = (trailingsize(SafeIndices(), A, length(dim)),)
 @inline index_shape_dim{T,N}(A::AbstractArray{T,N}, dim::NTuple{N}, ::Colon) = (indices(A, N),)
 @inline index_shape_dim(A, dim, I::Real...) = ()
 @inline index_shape_dim(A, dim, ::Colon, i, I...) = (indices(A, length(dim)), index_shape_dim(A, (dim...,true), i, I...)...)
@@ -188,8 +188,7 @@ index_shape(A::AbstractArray,  I::Colon) = (length(A),)
 @inline index_shape_dim(A, dim, i::AbstractArray{Bool}, I...) = (sum(i), index_shape_dim(A, (dim...,true), I...)...)
 @inline index_shape_dim{N}(A, dim, i::AbstractArray{CartesianIndex{N}}, I...) = (indices(i)..., index_shape_dim(A, (dim...,ntuple(d->true,Val{N})...), I...)...)
 
-@inline decolon(A::AbstractVector, ::Colon) = (indices(A,1),)
-@inline decolon(A::AbstractArray,  ::Colon) = (1:length(A),)
+@inline decolon(A::AbstractArray,  ::Colon) = (linearindices(A),)
 @inline decolon(A::AbstractArray, I...)     = decolon_dim(A, (true,), I...)
 @inline decolon_dim(A::AbstractArray, dim)  = ()
 @inline decolon_dim{T,N}(A::AbstractArray{T,N}, dim::NTuple{N}, ::Colon) = (indices(A, N),)
@@ -229,13 +228,13 @@ end
         @nexprs $N d->(I_d = to_index(I[d]))
         shape = @ncall $N index_shape A I
         dest = similar(A, shape)
-        size(dest) == map(dimlength, shape) || throw_checksize_error(dest, shape)
+        size(SafeIndices(), dest) == map(dimlength, shape) || throw_checksize_error(dest, shape)
         @ncall $N _unsafe_getindex! dest A I
     end
 end
 
 # logical indexing optimization - don't use find (within to_index)
-function _unsafe_getindex(::LinearIndexing, src::AbstractArray, I::AbstractArray{Bool})
+@safeindices function _unsafe_getindex(::LinearIndexing, src::AbstractArray, I::AbstractArray{Bool})
     shape = index_shape(src, I)
     dest = similar(src, shape)
     size(dest) == map(dimlength, shape) || throw_checksize_error(dest, shape)
@@ -252,7 +251,7 @@ function _unsafe_getindex(::LinearIndexing, src::AbstractArray, I::AbstractArray
 end
 
 # specialized form for LinearFast
-function _unsafe_getindex(::LinearFast, src::AbstractArray, I::AbstractArray{Bool})
+@safeindices function _unsafe_getindex(::LinearFast, src::AbstractArray, I::AbstractArray{Bool})
     shape = index_shape(src, I)
     dest = similar(src, shape)
     size(dest) == shape || throw_checksize_error(dest, shape)
@@ -406,22 +405,24 @@ for (f, fmod, op) = ((:cummin, :_cummin!, :min), (:cummax, :_cummax!, :max))
         return res
     end
 
-    @eval function ($f)(A::AbstractArray, axis::Integer)
+    @safeindices @eval function ($f)(A::AbstractArray, axis::Integer)
         res = similar(A)
         if size(A, axis) < 1
             return res
         end
-        R1 = CartesianRange(size(A)[1:axis-1])
-        R2 = CartesianRange(size(A)[axis+1:end])
+        R1 = CartesianRange(indices(A)[1:axis-1])
+        R2 = CartesianRange(indices(A)[axis+1:end])
         ($fmod)(res, A, R1, R2, axis)
     end
 
     @eval @noinline function ($fmod)(res, A::AbstractArray, R1::CartesianRange, R2::CartesianRange, axis::Integer)
+        inds = indices(A, axis)
+        i1 = first(inds)
         for I2 in R2
             for I1 in R1
-                res[I1, 1, I2] = A[I1, 1, I2]
+                res[I1, i1, I2] = A[I1, i1, I2]
             end
-            for i = 2:size(A, axis)
+            for i = i1+1:last(inds)
                 for I1 in R1
                     res[I1, i, I2] = ($op)(A[I1, i, I2], res[I1, i-1, I2])
                 end
@@ -441,7 +442,7 @@ cumprod!(B, A) = cumprod!(B, A, 1)
 cumsum!(B, A, axis::Integer) = cumop!(+, B, A, axis)
 cumprod!(B, A, axis::Integer) = cumop!(*, B, A, axis)
 
-function cumop!(op, B, A, axis::Integer)
+@safeindices function cumop!(op, B, A, axis::Integer)
     if size(B, axis) < 1
         return B
     end

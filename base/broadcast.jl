@@ -3,7 +3,7 @@
 module Broadcast
 
 using Base.Cartesian
-using Base: promote_op, promote_eltype, promote_eltype_op, @get!, _msk_end, unsafe_bitgetindex, linearindices, to_shape, tail, dimlength, OneTo
+using Base: promote_op, promote_eltype, promote_eltype_op, @get!, _msk_end, unsafe_bitgetindex, linearindices, tail, dimlength, OneTo
 import Base: .+, .-, .*, ./, .\, .//, .==, .<, .!=, .<=, .÷, .%, .<<, .>>, .^
 export broadcast, broadcast!, bitbroadcast
 export broadcast_getindex, broadcast_setindex!
@@ -66,7 +66,7 @@ end
 @inline _newindex(out, I, keep::Bool, indexmap...) = _newindex((out..., ifelse(keep, I[1], 1)), tail(I), indexmap...)
 
 newindexer(sz, x::Number) = ()
-@inline newindexer(sz, A) = _newindexer(sz, size(A))
+@safeindices @inline newindexer(sz, A) = _newindexer(sz, size(A))
 @inline _newindexer(sz, szA::Tuple{}) = ()
 @inline _newindexer(sz, szA) = (sz[1] == szA[1], _newindexer(tail(sz), tail(szA))...)
 
@@ -134,7 +134,7 @@ end
     end
 end
 
-@inline function broadcast!{nargs}(f, B::AbstractArray, As::Vararg{Any,nargs})
+@safeindices @inline function broadcast!{nargs}(f, B::AbstractArray, As::Vararg{Any,nargs})
     check_broadcast_shape(indices(B), As...)
     sz = size(B)
     mapindex = map(x->newindexer(sz, x), As)
@@ -177,7 +177,7 @@ end
     end
 end
 
-function broadcast_t(f, ::Type{Any}, As...)
+@safeindices function broadcast_t(f, ::Type{Any}, As...)
     shp = broadcast_shape(As...)
     iter = CartesianRange(shp)
     if isempty(iter)
@@ -219,8 +219,8 @@ end
 
 @inline bitbroadcast(f, As...) = broadcast!(f, similar(BitArray, broadcast_shape(As...)), As...)
 
-broadcast_getindex(src::AbstractArray, I::AbstractArray...) = broadcast_getindex!(Array{eltype(src)}(to_shape(broadcast_shape(I...))), src, I...)
-@generated function broadcast_getindex!(dest::AbstractArray, src::AbstractArray, I::AbstractArray...)
+broadcast_getindex(src::AbstractArray, I::AbstractArray...) = broadcast_getindex!(similar(Array{eltype(src)}, broadcast_shape(I...)), src, I...)
+@safeindices @generated function broadcast_getindex!(dest::AbstractArray, src::AbstractArray, I::AbstractArray...)
     N = length(I)
     Isplat = Expr[:(I[$d]) for d = 1:N]
     quote
@@ -235,7 +235,7 @@ broadcast_getindex(src::AbstractArray, I::AbstractArray...) = broadcast_getindex
     end
 end
 
-@generated function broadcast_setindex!(A::AbstractArray, x, I::AbstractArray...)
+@safeindices @generated function broadcast_setindex!(A::AbstractArray, x, I::AbstractArray...)
     N = length(I)
     Isplat = Expr[:(I[$d]) for d = 1:N]
     quote
@@ -273,22 +273,22 @@ end
 
 eltype_plus(As::AbstractArray...) = promote_eltype_op(+, As...)
 
-.+(As::AbstractArray...) = broadcast!(+, Array{eltype_plus(As...)}(to_shape(broadcast_shape(As...))), As...)
+.+(As::AbstractArray...) = broadcast!(+, similar(Array{eltype_plus(As...)}, broadcast_shape(As...)), As...)
 
 function .-(A::AbstractArray, B::AbstractArray)
-    broadcast!(-, Array{promote_op(-, eltype(A), eltype(B))}(to_shape(broadcast_shape(A,B))), A, B)
+    broadcast!(-, similar(Array{promote_op(-, eltype(A), eltype(B))}, broadcast_shape(A,B)), A, B)
 end
 
 eltype_mul(As::AbstractArray...) = promote_eltype_op(*, As...)
 
-.*(As::AbstractArray...) = broadcast!(*, Array{eltype_mul(As...)}(to_shape(broadcast_shape(As...))), As...)
+.*(As::AbstractArray...) = broadcast!(*, similar(Array{eltype_mul(As...)}, broadcast_shape(As...)), As...)
 
 function ./(A::AbstractArray, B::AbstractArray)
-    broadcast!(/, Array{promote_op(/, eltype(A), eltype(B))}(to_shape(broadcast_shape(A, B))), A, B)
+    broadcast!(/, similar(Array{promote_op(/, eltype(A), eltype(B))}, broadcast_shape(A, B)), A, B)
 end
 
 function .\(A::AbstractArray, B::AbstractArray)
-    broadcast!(\, Array{promote_op(\, eltype(A), eltype(B))}(to_shape(broadcast_shape(A, B))), A, B)
+    broadcast!(\, similar(Array{promote_op(\, eltype(A), eltype(B))}, broadcast_shape(A, B)), A, B)
 end
 
 typealias RatIntT{T<:Integer} Union{Type{Rational{T}},Type{T}}
@@ -298,11 +298,11 @@ type_rdiv{T<:Integer,S<:Integer}(::RatIntT{T}, ::RatIntT{S}) =
 type_rdiv{T<:Integer,S<:Integer}(::CRatIntT{T}, ::CRatIntT{S}) =
     Complex{Rational{promote_type(T,S)}}
 function .//(A::AbstractArray, B::AbstractArray)
-    broadcast!(//, Array{type_rdiv(eltype(A), eltype(B))}(to_shape(broadcast_shape(A, B))), A, B)
+    broadcast!(//, similar(Array{type_rdiv(eltype(A), eltype(B))}, broadcast_shape(A, B)), A, B)
 end
 
 function .^(A::AbstractArray, B::AbstractArray)
-    broadcast!(^, Array{promote_op(^, eltype(A), eltype(B))}(to_shape(broadcast_shape(A, B))), A, B)
+    broadcast!(^, similar(Array{promote_op(^, eltype(A), eltype(B))}, broadcast_shape(A, B)), A, B)
 end
 
 # ## element-wise comparison operators returning BitArray ##

@@ -28,7 +28,12 @@ parenttype{T,N,AA}(::Type{OffsetArray{T,N,AA}}) = AA
 parenttype(A::OffsetArray) = parenttype(typeof(A))
 
 Base.parent(A::OffsetArray) = A.parent
-Base.size(A::OffsetArray) = size(parent(A))
+Base.size(A::OffsetArray) = error("non-certified use of size; audit code and then wrap in @safeindices")
+Base.size(A::OffsetArray, d) = error("non-certified use of size; audit code and then wrap in @safeindices")
+Base.size(s::Base.SafeIndices, A::OffsetArray) = size(s, parent(A))
+Base.size(s::Base.SafeIndices, A::OffsetArray, d) = size(s, parent(A), d)
+Base.eachindex(::LinearSlow, A::OffsetArray) = CartesianRange(indices(A))
+Base.eachindex(::LinearFast, A::OffsetVector) = indices(A, 1)
 Base.summary(A::OffsetArray) = string(typeof(A))*" with indices "*string(indices(A))
 
 # Implementations of indices and indices1. Since bounds-checking is
@@ -101,7 +106,11 @@ let
 # Basics
 A0 = [1 3; 2 4]
 A = OffsetArray(A0, (-1,2))                   # LinearFast
-S = OffsetArray(view(A0, 1:2, 1:2), (-1,2))  # LinearSlow
+S = OffsetArray(view(A0, 1:2, 1:2), (-1,2))   # LinearSlow
+@test_throws ErrorException size(A)
+@test_throws ErrorException size(A, 1)
+@test size(Base.SafeIndices(), A)    == (2,2)
+@test size(Base.SafeIndices(), A, 1) == 2
 @test indices(A) == indices(S) == (0:1, 3:4)
 @test A[0,3] == A[1] == S[0,3] == S[1] == 1
 @test A[1,3] == A[2] == S[1,3] == S[2] == 2
@@ -204,7 +213,7 @@ cmp_showf(Base.print_matrix, io, OffsetArray(rand(10^3,10^3), (10,-9))) # neithe
 # Similar
 B = similar(A, Float32)
 @test isa(B, OffsetArray{Float32,2})
-@test size(B) == size(A)
+@safeindices @test size(B) == size(A)
 @test indices(B) === indices(A)
 B = similar(A, (3,4))
 @test isa(B, Array{Int,2})

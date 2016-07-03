@@ -104,6 +104,14 @@ Basic functions
 
        Base.linearindexing{T<:MyArray}(::Type{T}) = Base.LinearFast()
 
+.. function:: @safeindices ex
+
+.. function:: IndicesSafety
+
+.. function:: SafeIndices
+
+.. function:: UnsafeIndices
+
 .. function:: countnz(A)
 
    .. Docstring generated from Julia source
@@ -1072,4 +1080,3 @@ dense counterparts. The following functions are specific to sparse arrays.
    For additional (algorithmic) information, and for versions of these methods that forgo argument checking, see (unexported) parent methods :func:`Base.SparseArrays.unchecked_noalias_permute!` and :func:`Base.SparseArrays.unchecked_aliasing_permute!`\ .
 
    See also: :func:`Base.SparseArrays.permute`
-
