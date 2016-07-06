@@ -1,7 +1,5 @@
 # This file is a part of Julia. License is MIT: http://julialang.org/license
 
-@testset "libgit2" begin
-
 const LIBGIT2_VER = v"0.23.0"
 
 #########
@@ -366,9 +364,9 @@ mktempdir() do dir
                 @test_throws BoundsError status[length(status)+1]
                 #we've added a file - show that it is new
                 @test status[1].status == LibGit2.Consts.STATUS_WT_NEW
+                close(repo_file)
             finally
                 finalize(repo)
-                close(repo_file)
             end
     end
 
