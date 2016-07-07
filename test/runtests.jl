@@ -30,6 +30,7 @@ move_to_node1("loading")
 move_to_node1("reflection")
 move_to_node1("subarray")
 move_to_node1("mmap")
+move_to_node1("inference")
 # In a constrained memory environment, run the parallel test after all other tests
 # since it starts a lot of workers and can easily exceed the maximum memory
 max_worker_rss != typemax(Csize_t) && move_to_node1("parallel")
