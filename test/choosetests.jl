@@ -79,6 +79,19 @@ function choosetests(choices = [])
         filter!(x -> x != "linalg", tests)
         prepend!(tests, linalgtests)
     end
+
+    sparsetests = ["sparse/sparse", "sparse/sparsevector"]
+    if Base.USE_GPL_LIBS
+        append!(sparsetests, ["sparse/umfpack", "sparse/cholmod", "sparse/spqr"])
+    end
+    if "sparse" in skip_tests
+        filter!(x -> (x != "sparse" && !(x in sparsetests)), tests)
+    elseif "sparse" in tests
+        # specifically selected case
+        filter!(x -> x != "sparse", tests)
+        prepend!(tests, sparsetests)
+    end
+
     datestests = ["dates/accessors", "dates/adjusters", "dates/query",
                   "dates/periods", "dates/ranges", "dates/types",
                   "dates/io", "dates/arithmetic", "dates/conversions"]
