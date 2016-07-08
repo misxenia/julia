@@ -24,3 +24,4 @@
    stdio
    promote-op
    boundscheck
+   offset-arrays
