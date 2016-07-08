@@ -34,7 +34,7 @@ size{N}(x, d1::Integer, d2::Integer, dx::Vararg{Integer, N}) = (size(x, d1), siz
 """
     IndicesSafety
 
-is an abstract-trait intended to help migrate code that assumes that
+is an abstract-trait intended to help migrate code that may assume that
 array indexing starts with 1.
 
 See `@safeindices`, `SafeIndices`, and `UnsafeIndices` for more information.
@@ -48,13 +48,14 @@ is a trait-value whose purpose is to help migrate functions to a form
 safe for arrays that have indexing that does not necessarily start
 with 1. For example, a great deal of "legacy" code uses `for i =
 1:size(A,d)` to iterate over dimension `d`, but this usage assumes
-that indexing starts with 1. (One should use `for i in indices(A, d)`
-instead.)
+that `A`'s indexing starts with 1. (The more general approach is `for
+i in indices(A, d)`.)
 
 To help discover code that makes such assumptions, `size(A, d)` should
 throw an error when passed an array `A` with non-1 indexing.
-`SafeIndices()` can then be used to mark a call as having been
-"vetted" for its correctness. For example,
+Naturally, this makes `size` unusable; to indicate that a call to
+`size` should succeed, one passes `SafeIndices()` as the first
+argument:
 
     size(SafeIndices(), A, d)
 
@@ -67,11 +68,11 @@ immutable SafeIndices <: IndicesSafety end
 """
     UnsafeIndices()
 
-is used as a default value that can be used to make a call "brittle"
-for arrays whose indices may not start with 1. See `@safeindices` or
-`SafeIndices` for more information.  Example:
+can be used as a default value to make a call "brittle" for arrays
+whose indices may not start with 1. Example:
 
     trailingsize(A, n) = trailingsize(UnsafeIndices(), A, n)
+
     function trailingsize(s::IndicesSafety, A, n)
         sz = size(s, A, n)
         for i = n+1:ndims(A)
@@ -80,18 +81,21 @@ for arrays whose indices may not start with 1. See `@safeindices` or
         sz
     end
 
-would make `trailingsize` by-default unsafe for non-1 arrays, forcing
-the user to make the call as `trailingsize(SafeIndices(), A, n)` if
-s/he is certain that the usage is safe.
+makes `trailingsize` by-default unsafe for non-1 arrays. This forces
+users to examine all calls to `trailingsize` for their safety for
+non-1 arrays. If a call has been determined to be safe, it can be
+rewritten as `trailingsize(SafeIndices(), A, n)`.
+
+See also `@safeindices`, `SafeIndices`, and `IndicesSafety`.
 """
 immutable UnsafeIndices <: IndicesSafety end
 
 """
     @safeindices ex
 
-Marks `ex` as being safe for arrays that have indexing that does not
-start at 1. Functions such as `size` throw errors on such arrays,
-unless such calls have been wrapped in `@safeindices`.
+Marks expression `ex` as being safe for arrays that have indexing that
+does not start at 1. Functions such as `size` throw errors on such
+arrays, unless such calls have been wrapped in `@safeindices`.
 
 Internally, this macro simply rewrites such calls as
 `size(Base.SafeIndices(), A)`.
@@ -104,16 +108,26 @@ Example:
 
 will annotate all of `foo`'s calls to `length` and `size` with
 `SafeIndices`.
+
+You can trigger annotation of calls to a function `bar` using
+`push!(Base.safeindices_functions, :bar)`. Note that all calls to
+`bar` will be annotated, not just ones involving arrays.
 """
 macro safeindices(ex)
     esc(_safeindices(ex))
 end
 
+const safeindices_functions = Array{Symbol}(2)
+Core.arrayset(safeindices_functions, :size, 1)
+Core.arrayset(safeindices_functions, :length, 2)
+
 function _safeindices(ex::Expr)
     if ex.head == :call
         f = ex.args[1]
-        if f == :size || f == :length
-            return Expr(:call, f, :(Base.SafeIndices()), ex.args[2:end]...)
+        for annotated in safeindices_functions
+            if f == annotated
+                return Expr(:call, f, :(Base.SafeIndices()), ex.args[2:end]...)
+            end
         end
     end
     return Expr(ex.head, map(_safeindices, ex.args)...)

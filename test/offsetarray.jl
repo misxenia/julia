@@ -30,6 +30,8 @@ parenttype(A::OffsetArray) = parenttype(typeof(A))
 Base.parent(A::OffsetArray) = A.parent
 Base.size(A::OffsetArray) = error("non-certified use of size; audit code and then wrap in @safeindices")
 Base.size(A::OffsetArray, d) = error("non-certified use of size; audit code and then wrap in @safeindices")
+Base.size(::Base.UnsafeIndices, A::OffsetArray) = error("non-certified use of size; audit code and then wrap in @safeindices")
+Base.size(::Base.UnsafeIndices, A::OffsetArray, d) = error("non-certified use of size; audit code and then wrap in @safeindices")
 Base.size(s::Base.SafeIndices, A::OffsetArray) = size(s, parent(A))
 Base.size(s::Base.SafeIndices, A::OffsetArray, d) = size(s, parent(A), d)
 Base.eachindex(::LinearSlow, A::OffsetArray) = CartesianRange(indices(A))
@@ -102,16 +104,28 @@ end
 
 using OAs
 
+push!(Base.safeindices_functions, :oa_bar)  # must be before the let
 let
 # Basics
 A0 = [1 3; 2 4]
 A = OffsetArray(A0, (-1,2))                   # LinearFast
 S = OffsetArray(view(A0, 1:2, 1:2), (-1,2))   # LinearSlow
+@test indices(A) == indices(S) == (0:1, 3:4)
 @test_throws ErrorException size(A)
 @test_throws ErrorException size(A, 1)
-@test size(Base.SafeIndices(), A)    == (2,2)
-@test size(Base.SafeIndices(), A, 1) == 2
-@test indices(A) == indices(S) == (0:1, 3:4)
+@test @safeindices(size(A))    == (2,2)
+@test @safeindices(size(A, 1)) == 2
+oa_bar(::Base.SafeIndices, ::OffsetArray) = "OK"
+oa_bar(::Base.UnsafeIndices, ::OffsetArray) = error("check code and wrap in @safeindices")
+oa_bar(A::AbstractArray) = oa_bar(Base.UnsafeIndices(), A)
+oa_bar(::Base.IndicesSafety, A::AbstractArray) = 1
+@test_throws ErrorException oa_bar(A)
+@test oa_bar(A0) == 1
+@test oa_bar(Base.SafeIndices(), A) == "OK"
+@test @safeindices(oa_bar(A)) == "OK"
+@test @safeindices(oa_bar(A0)) == 1
+
+# Scalar indexing
 @test A[0,3] == A[1] == S[0,3] == S[1] == 1
 @test A[1,3] == A[2] == S[1,3] == S[2] == 2
 @test A[0,4] == A[3] == S[0,4] == S[3] == 3
@@ -372,3 +386,4 @@ v = OffsetArray(rand(8), (-2,))
 @test A+A == OffsetArray(parent(A)+parent(A), A.offsets)
 @test A.*A == OffsetArray(parent(A).*parent(A), A.offsets)
 end
+pop!(Base.safeindices_functions)
