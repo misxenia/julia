@@ -124,6 +124,7 @@ oa_bar(::Base.IndicesSafety, A::AbstractArray) = 1
 @test oa_bar(Base.SafeIndices(), A) == "OK"
 @test @safeindices(oa_bar(A)) == "OK"
 @test @safeindices(oa_bar(A0)) == 1
+@test macroexpand(:(@safeindices(Foo.size(A)))) == :(Foo.size(Base.SafeIndices(),A))
 
 # Scalar indexing
 @test A[0,3] == A[1] == S[0,3] == S[1] == 1

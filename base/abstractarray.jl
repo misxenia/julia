@@ -124,8 +124,15 @@ Core.arrayset(safeindices_functions, :length, 2)
 function _safeindices(ex::Expr)
     if ex.head == :call
         f = ex.args[1]
+        if isa(f, Symbol)
+            fsym = f
+        elseif isa(f, Expr) && (f::Expr).head == :.
+            fsym = unquoted((f::Expr).args[2])
+        else
+            return Expr(ex.head, map(_safeindices, ex.args)...)
+        end
         for annotated in safeindices_functions
-            if f == annotated
+            if fsym == annotated
                 return Expr(:call, f, :(Base.SafeIndices()), ex.args[2:end]...)
             end
         end
