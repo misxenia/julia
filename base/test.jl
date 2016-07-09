@@ -919,10 +919,9 @@ julia> @inferred max(1,2)
 macro inferred(ex)
     ex.head == :call || error("@inferred requires a call expression")
     Base.remove_linenums!(quote
-        vals = ($([esc(ex.args[i]) for i = 2:length(ex.args)]...),)
-        inftypes = Base.return_types($(esc(ex.args[1])), Base.typesof(vals...))
+        inftypes = $(Base.gen_call_with_extracted_types(Base.return_types, ex))
         @assert length(inftypes) == 1
-        result = $(esc(ex.args[1]))(vals...)
+        result = $(esc(ex))
         rettype = isa(result, Type) ? Type{result} : typeof(result)
         rettype == inftypes[1] || error("return type $rettype does not match inferred return type $(inftypes[1])")
         result

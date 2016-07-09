@@ -278,6 +278,28 @@ for i in 1:6
     @test typeof(tss[i].results[4].results[1]) == (iseven(i) ? Pass : Fail)
 end
 
+# test @inferred
+function uninferrable_function(i)
+    q = [1, "1"]
+    return q[i]
+end
+
+@test_throws ErrorException @inferred(uninferrable_function(1))
+@test @inferred(identity(1)) == 1
+
 # Issue #14928
 # Make sure abstract error type works.
 @test_throws Exception error("")
+
+# Issue #17105
+# @inferred with kwargs
+function inferrable_kwtest(x; y=1)
+    2x
+end
+function uninferrable_kwtest(x; y=1)
+    2x+y
+end
+@test @inferred(inferrable_kwtest(1)) == 2
+@test @inferred(inferrable_kwtest(1; y=1)) == 2
+@test @inferred(uninferrable_kwtest(1)) == 3
+@test_throws ErrorException @inferred(uninferrable_kwtest(1; y=2)) == 2
