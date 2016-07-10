@@ -48,3 +48,5 @@ void *lookupWriteAddressFor(RTDyldMemoryManager *memmgr, void *rt_addr);
 #ifdef USE_MCJIT
 RTDyldMemoryManager* createRTDyldMemoryManager(void);
 #endif
+
+Pass *createLowerPTLSPass(bool imaging_mode, MDNode *tbaa_const);

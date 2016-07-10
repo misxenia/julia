@@ -49,7 +49,7 @@ endif
 LLVMLINK :=
 
 ifeq ($(JULIACODEGEN),LLVM)
-SRCS += codegen disasm debuginfo llvm-simdloop llvm-gcroot cgmemmgr
+SRCS += codegen disasm debuginfo llvm-simdloop llvm-ptls llvm-gcroot cgmemmgr
 FLAGS += -I$(shell $(LLVM_CONFIG_HOST) --includedir)
 LLVM_LIBS := all
 ifeq ($(USE_POLLY),1)

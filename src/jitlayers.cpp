@@ -26,6 +26,7 @@ static void addOptimizationPasses(T *PM)
 #   endif
 #endif
     if (jl_options.opt_level == 0) {
+        PM->add(createLowerPTLSPass(imaging_mode, tbaa_const));
         return;
     }
 #ifdef LLVM37
@@ -52,6 +53,9 @@ static void addOptimizationPasses(T *PM)
 #ifndef INSTCOMBINE_BUG
     PM->add(createInstructionCombiningPass()); // Cleanup for scalarrepl.
 #endif
+    // Let the InstCombine pass remove the unnecessary load of
+    // safepoint address first
+    PM->add(createLowerPTLSPass(imaging_mode, tbaa_const));
     PM->add(createSROAPass());                 // Break up aggregate allocas
 #ifndef INSTCOMBINE_BUG
     PM->add(createInstructionCombiningPass()); // Cleanup for scalarrepl.
