@@ -50,3 +50,4 @@ RTDyldMemoryManager* createRTDyldMemoryManager(void);
 #endif
 
 Pass *createLowerPTLSPass(bool imaging_mode, MDNode *tbaa_const);
+Pass *createLowerGCFramePass(MDNode *tbaa_gcframe);

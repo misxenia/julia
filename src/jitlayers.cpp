@@ -9,6 +9,7 @@
 template <class T>
 static void addOptimizationPasses(T *PM)
 {
+    PM->add(createLowerGCFramePass(tbaa_gcframe));
 #ifdef JL_DEBUG_BUILD
     PM->add(createVerifierPass());
 #endif
@@ -404,7 +405,7 @@ public:
             if (F->isDeclaration()) {
                 if (F->use_empty())
                     F->eraseFromParent();
-                else if (!(F->isIntrinsic() ||
+                else if (!(isIntrinsicFunction(F) ||
                            findUnmangledSymbol(F->getName()) ||
                            SectionMemoryManager::getSymbolAddressInProcess(
                                F->getName()))) {
@@ -684,7 +685,7 @@ static void jl_finalize_function(const std::string &F, Module *collector = NULL)
             if (!F->isDeclaration()) {
                 module_for_fname.erase(F->getName());
             }
-            else if (!F->isIntrinsic()) {
+            else if (!isIntrinsicFunction(F)) {
                 to_finalize.push_back(F->getName().str());
             }
         }

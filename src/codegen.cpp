@@ -438,6 +438,12 @@ extern "C" {
     int globalUnique = 0;
 }
 
+// Whether the Function is an llvm or julia intrinsic.
+static inline bool isIntrinsicFunction(Function *F)
+{
+    return F->isIntrinsic() || F->getName().startswith("julia.");
+}
+
 #include "jitlayers.cpp"
 
 // metadata tracking for a llvm Value* during codegen
@@ -973,11 +979,9 @@ static void jl_setup_module(Module *m)
 
 // this takes ownership of a module after code emission is complete
 // and will add it to the execution engine when required (by jl_finalize_function)
-static void finalize_gc_frame(Module *m);
 static void jl_finalize_module(std::unique_ptr<Module> uniquem, bool shadow)
 {
     Module *m = uniquem.release(); // unique_ptr won't be able track what we do with this (the invariant is recovered by jl_finalize_function)
-    finalize_gc_frame(m);
 #if !defined(USE_ORCJIT)
     PM->run(*m);
 #endif
@@ -1160,7 +1164,6 @@ void *jl_get_llvmf(jl_tupletype_t *tt, bool getwrapper, bool getdeclarations)
         Function *f, *specf;
         jl_llvm_functions_t declarations;
         std::unique_ptr<Module> m = emit_function(temp ? temp : linfo, &declarations);
-        finalize_gc_frame(m.get());
         PM->run(*m.get());
         f = (llvm::Function*)declarations.functionObject;
         specf = (llvm::Function*)declarations.specFunctionObject;
@@ -3460,17 +3463,6 @@ static void allocate_gc_frame(BasicBlock *b0, jl_codectx_t *ctx)
     int nthfield = offsetof(jl_tls_states_t, safepoint) / sizeof(void*);
     ctx->signalPage = emit_nthptr_recast(ctx->ptlsStates, nthfield, tbaa_const,
                                          PointerType::get(T_psize, 0));
-}
-
-void jl_codegen_finalize_temp_arg(Function *F, MDNode *tbaa_gcframe);
-static void finalize_gc_frame(Module *m)
-{
-    for (Module::iterator I = m->begin(), E = m->end(); I != E; ++I) {
-        Function *F = &*I;
-        if (F->isDeclaration())
-            continue;
-        jl_codegen_finalize_temp_arg(F, tbaa_gcframe);
-    }
 }
 
 static Function *gen_cfun_wrapper(jl_function_t *ff, jl_value_t *jlrettype, jl_tupletype_t *argt,
