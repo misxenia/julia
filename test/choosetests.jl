@@ -103,9 +103,7 @@ function choosetests(choices = [])
         prepend!(tests, datestests)
     end
 
-    unicodetests = ["unicode/UnicodeError", "unicode/checkstring", "unicode/utf8proc",
-                    "unicode/utf16", "unicode/utf8", "unicode/types",
-                    "unicode/utf32"]
+    unicodetests = ["unicode/UnicodeError", "unicode/utf8proc", "unicode/utf8"]
     if "unicode" in skip_tests
         filter!(x -> (x != "unicode" && !(x in unicodetests)), tests)
     elseif "unicode" in tests

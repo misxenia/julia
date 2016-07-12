@@ -94,7 +94,6 @@ for m in [:foo1, :foo2, :foo3, :foo4, :foo5]
 end
 @test Base.findmeta(multi_meta.args)[1] == 0
 
-<<<<<<< dded901f9920e361a86e54e4ca7238185e48c3da
 # Test that pushmeta! can push across other macros,
 # in the case multiple pushmeta!-based macros are combined
 
