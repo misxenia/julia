@@ -98,6 +98,16 @@ A = rand(5,4,3)
 @test checkbounds(Bool, A, [CartesianIndex((5, 5))], 3) == false
 @test checkbounds(Bool, A, [CartesianIndex((5, 4))], 4) == false
 
+# unexported but handy bounds checking functions
+@test Base.checkbounds_indices(Bool, (1:3,), (4,)) == false
+@test_throws BoundsError Base.checkbounds_indices((1:3,), (4,))
+@test Base.checkbounds_indices(Bool, (1:3,), (3,)) == true
+Base.checkbounds_indices((1:3,), (3,))  # doesn't throw
+@test Base.checkbounds_logical(Bool, [1,2,3], trues(2)) == false
+@test_throws BoundsError Base.checkbounds_logical([1,2,3], trues(2))
+@test Base.checkbounds_logical(Bool, [1,2,3], trues(3)) == true
+Base.checkbounds_logical([1,2,3], trues(3)) # doesn't throw
+
 # sub2ind & ind2sub
 # 0-dimensional
 for i = 1:4

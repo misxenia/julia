@@ -630,6 +630,12 @@ Indexing, Assignment, and Concatenation
 
    See also ``checkindex``\ .
 
+.. function:: checkindex(inds::AbstractUnitRange, index)
+
+   .. Docstring generated from Julia source
+
+   Throw an error if ``index`` is not within the bounds of ``inds``\ .
+
 .. function:: checkindex(Bool, inds::AbstractUnitRange, index)
 
    .. Docstring generated from Julia source
